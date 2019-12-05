@@ -23,14 +23,16 @@ enum { VERTICAL, HORIZONTAL };
 static struct ship {
 	char *name;
 	int len;
+	int sunk;
 } ships[] = {
-	{ "Patrol Boat", 2 },
-	{ "Submarine", 2 },
-	{ "Cruiser", 3 },
-	{ "Destroyer", 3 },
-	{ "Battleship", 4 },
-	{ "Aircraft Carrier", 5 },
+	{ "Patrol Boat", 2, 0 },
+	{ "Submarine", 2, 0 },
+	{ "Cruiser", 3, 0 },
+	{ "Destroyer", 3, 0 },
+	{ "Battleship", 4, 0 },
+	{ "Aircraft Carrier", 5, 0 },
 };
+size_t nships = sizeof(ships) / sizeof(ships[0]);
 
 static void usage(const char *progname, int status)
 {
@@ -40,13 +42,16 @@ static void usage(const char *progname, int status)
 
 static int sunk(const char *board, int size, char c)
 {
-	int len = 0;
 	int hits = 0;
+	struct ship *s = NULL;
 	char hit = toupper(c);
 
-	for (size_t i = 0; i < sizeof(ships) / sizeof(ships[0]); i++) {
+	for (size_t i = 0; i < nships; i++) {
 		if (hit == toupper(ships[i].name[0])) {
-			len = ships[i].len;
+			if (ships[i].sunk) {
+				return 1;
+			}
+			s = ships + i;
 			break;
 		}
 	}
@@ -55,7 +60,7 @@ static int sunk(const char *board, int size, char c)
 		hits += (board[i] == hit);
 	}
 
-	return hits == len;
+	return s->sunk = (hits == s->len);
 }
 
 static void cheat(const char *board, int size)
@@ -108,7 +113,7 @@ static void updatescreen(const char *board, int size, char *input)
 
 	printw("\n");
 
-	for (size_t i = 0; i < sizeof(ships) / sizeof(ships[0]); i++) {
+	for (size_t i = 0; i < nships; i++) {
 		printw("%d - %s\n", ships[i].len, ships[i].name);
 	}
 
@@ -150,7 +155,7 @@ static char *setup_board(int size)
 
 	memset(board, BLANK_SPACE, size * size);
 
-	for (size_t i = 0; i < sizeof(ships) / sizeof(ships[0]); i++) {
+	for (size_t i = 0; i < nships; i++) {
 		int loc = 0;
 		do {
 			loc = rand() % (size * size);
@@ -257,5 +262,18 @@ int main(int argc, char *argv[])
 		}
 
 		updatescreen(board1, size, inbuf);
+
+		size_t nsunk = 0;
+		for (size_t i = 0; i < nships; i++) {
+			nsunk += ships[i].sunk;
+		}
+
+		if (nsunk == nships) {
+			break;
+		}
 	}
+
+	endwin();
+	printf("You won!\n");
+	return 0;
 }

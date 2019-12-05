@@ -8,6 +8,9 @@
 #include <unistd.h>
 
 #define CTRL_C 3
+#define BLANK_SPACE 	' '
+#define MISSED_SPACE	'.'
+#define HIT_SPACE	'!'
 
 #define COLUMNNAMES "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
@@ -50,7 +53,11 @@ static void updatescreen(const char *board, int width, int height, char *input)
 	for (int i = 0; i < height; i++) {
 		printw("%2d ", i + 1);
 		for (int j = 0; j < width; j++) {
-			printw("%c", board[i * width + j]);
+			char c = board[i * width + j];
+			if (isalpha(c)) {
+				c = BLANK_SPACE;
+			}
+			printw("%c", c);
 		}
 		printw("\n");
 	}
@@ -71,7 +78,7 @@ static int place_ship(struct ship *s, char *board, int width, int height, int lo
 	}
 
 	for (int i = 0; i < s->len; i++) {
-		if (board[loc + i * step] != '.') {
+		if (board[loc + i * step] != BLANK_SPACE) {
 			return 0;
 		}
 	}
@@ -93,7 +100,7 @@ static char *setup_board(int size)
 		return NULL;
 	}
 
-	memset(board, '.', size);
+	memset(board, BLANK_SPACE, size);
 
 	for (size_t i = 0; i < sizeof(ships) / sizeof(ships[0]); i++) {
 		int loc = 0;
@@ -108,29 +115,27 @@ static char *setup_board(int size)
 
 static void fire(char *board, int size, const char *input)
 {
-	clear();
-	move(0, 0);
-	printw("firing at %s\n", input);
 	char cnames[] = COLUMNNAMES; 
 	char *columnname = strchr(cnames, toupper(input[0]));
 	if (!columnname) {
-		printw("invalid column\n");
 		return;
 	}
 	int col = columnname - cnames;
 	if (col < 0 || col > size) {
-		printw("column %d out of range\n", col);
 		return;
 	}
 	
 	int row = atoi(input + 1) - 1;
 	if (row < 0 || row > size) {
-		printw("row %d out of range\n", row);
 		return;
 	}
 
-	printw("row %d, column %d\n", row, col);
-	board[row * size + col] = '!';
+	int loc = row * size + col;
+	if (board[loc] == BLANK_SPACE) {
+		board[loc] = MISSED_SPACE;
+	} else {
+		board[loc] = HIT_SPACE;
+	}
 }
 
 int main(int argc, char *argv[])
@@ -202,7 +207,4 @@ int main(int argc, char *argv[])
 
 		updatescreen(board1, size, size, inbuf);
 	}
-
-	endwin();
-	return 0;
 }

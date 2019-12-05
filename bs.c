@@ -23,14 +23,13 @@ enum { VERTICAL, HORIZONTAL };
 static struct ship {
 	char *name;
 	int len;
-	int nhits;
 } ships[] = {
-	{ "Patrol Boat", 2, 0 },
-	{ "Submarine", 2, 0 },
-	{ "Cruiser", 3, 0 },
-	{ "Destroyer", 3, 0 },
-	{ "Battleship", 4, 0 },
-	{ "Aircraft Carrier", 5, 0 },
+	{ "Patrol Boat", 2 },
+	{ "Submarine", 2 },
+	{ "Cruiser", 3 },
+	{ "Destroyer", 3 },
+	{ "Battleship", 4 },
+	{ "Aircraft Carrier", 5 },
 };
 
 static void usage(const char *progname, int status)
@@ -39,23 +38,68 @@ static void usage(const char *progname, int status)
 	exit(status);
 }
 
-static void updatescreen(const char *board, int width, int height, char *input)
+static int sunk(const char *board, int size, char c)
+{
+	int len = 0;
+	int hits = 0;
+	char hit = toupper(c);
+
+	for (size_t i = 0; i < sizeof(ships) / sizeof(ships[0]); i++) {
+		if (hit == toupper(ships[i].name[0])) {
+			len = ships[i].len;
+			break;
+		}
+	}
+
+	for (int i = 0; i < size * size; i++) {
+		hits += (board[i] == hit);
+	}
+
+	return hits == len;
+}
+
+static void cheat(const char *board, int size)
 {
 	clear();
 	move(0, 0);
 
 	printw("   ");
-	for (int i = 0; i < width; i++) {
+	for (int i = 0; i < size; i++) {
 		printw("%c", COLUMNNAMES[i]);
 	}
 	printw("\n");
 
-	for (int i = 0; i < height; i++) {
+	for (int i = 0; i < size; i++) {
 		printw("%2d ", i + 1);
-		for (int j = 0; j < width; j++) {
-			char c = board[i * width + j];
-			if (isalpha(c)) {
+		for (int j = 0; j < size; j++) {
+			char c = board[i * size + j];
+			printw("%c", c);
+		}
+		printw("\n");
+	}
+	refresh();
+	sleep(1);
+}
+
+static void updatescreen(const char *board, int size, char *input)
+{
+	clear();
+	move(0, 0);
+
+	printw("   ");
+	for (int i = 0; i < size; i++) {
+		printw("%c", COLUMNNAMES[i]);
+	}
+	printw("\n");
+
+	for (int i = 0; i < size; i++) {
+		printw("%2d ", i + 1);
+		for (int j = 0; j < size; j++) {
+			char c = board[i * size + j];
+			if (!isalpha(c) || islower(c)) {
 				c = BLANK_SPACE;
+			} else if (!sunk(board, size, c)) {
+				c = HIT_SPACE;
 			}
 			printw("%c", c);
 		}
@@ -65,15 +109,15 @@ static void updatescreen(const char *board, int width, int height, char *input)
 	refresh();
 }
 
-static int place_ship(struct ship *s, char *board, int width, int height, int loc, int direction)
+static int place_ship(struct ship *s, char *board, int size, int loc, int direction)
 {
-	int step = direction == HORIZONTAL ? 1 : width;
+	int step = direction == HORIZONTAL ? 1 : size;
 
-	if (loc + s->len * step > width * height) {
+	if ((loc + (s->len * step)) > (size * size)) {
 		return 0;
 	}
 
-	if (direction == HORIZONTAL && (loc + s->len) % width < loc % width) {
+	if (direction == HORIZONTAL && ((loc + s->len) % size) < (loc % size)) {
 		return 0;
 	}
 
@@ -84,7 +128,7 @@ static int place_ship(struct ship *s, char *board, int width, int height, int lo
 	}
 
 	for (int i = 0; i < s->len; i++) {
-		board[loc + i * step] = s->name[0];
+		board[loc + i * step] = tolower(s->name[0]);
 	}
 
 	return 1;
@@ -92,21 +136,18 @@ static int place_ship(struct ship *s, char *board, int width, int height, int lo
 
 static char *setup_board(int size)
 {
-	int width = size;
-	int height = size;
-	size *= size;
-	char *board = malloc(size);
+	char *board = malloc(size * size);
 	if (!board) {
 		return NULL;
 	}
 
-	memset(board, BLANK_SPACE, size);
+	memset(board, BLANK_SPACE, size * size);
 
 	for (size_t i = 0; i < sizeof(ships) / sizeof(ships[0]); i++) {
 		int loc = 0;
 		do {
-			loc = rand() % (size);
-		} while (place_ship(ships + i, board, width, height, loc, rand() & 1) != 1);
+			loc = rand() % (size * size);
+		} while (place_ship(ships + i, board, size, loc, rand() & 1) != 1);
 
 	}
 
@@ -134,7 +175,7 @@ static void fire(char *board, int size, const char *input)
 	if (board[loc] == BLANK_SPACE) {
 		board[loc] = MISSED_SPACE;
 	} else {
-		board[loc] = HIT_SPACE;
+		board[loc] = toupper(board[loc]);
 	}
 }
 
@@ -177,14 +218,17 @@ int main(int argc, char *argv[])
 	char inbuf[BUFSIZ] = {0};
 	char *input = inbuf;
 
-	updatescreen(board1, size, size, inbuf);
+	updatescreen(board1, size, inbuf);
 	while ((c = getch()) != 0) {
 		switch (c) {
 		case '\n':
 			fire(board1, size, inbuf);
-			refresh();
 			input = inbuf;
 			*input = '\0';
+			break;
+
+		case '\t':
+			cheat(board1, size);
 			break;
 
 		case KEY_BACKSPACE:
@@ -205,6 +249,6 @@ int main(int argc, char *argv[])
 			*input = '\0';
 		}
 
-		updatescreen(board1, size, size, inbuf);
+		updatescreen(board1, size, inbuf);
 	}
 }

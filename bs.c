@@ -96,15 +96,22 @@ static void updatescreen(const char *board, int size, char *input)
 		printw("%2d ", i + 1);
 		for (int j = 0; j < size; j++) {
 			char c = board[i * size + j];
-			if (!isalpha(c) || islower(c)) {
+			if (islower(c)) {
 				c = BLANK_SPACE;
-			} else if (!sunk(board, size, c)) {
+			} else if (isupper(c) && !sunk(board, size, c)) {
 				c = HIT_SPACE;
 			}
 			printw("%c", c);
 		}
 		printw("\n");
 	}
+
+	printw("\n");
+
+	for (size_t i = 0; i < sizeof(ships) / sizeof(ships[0]); i++) {
+		printw("%d - %s\n", ships[i].len, ships[i].name);
+	}
+
 	printw("\nMove: %s", input);
 	refresh();
 }

@@ -269,11 +269,24 @@ int main(int argc, char *argv[])
 		}
 
 		if (nsunk == nships) {
-			break;
+			printw("\rYou win! Play again [Y/N]? ");
+			refresh();
+			while ((c = getch()) != 0) {
+				if (tolower(c) == 'n') {
+					endwin();
+					exit(0);
+				} else if (tolower(c) == 'y') {
+					for (size_t i = 0; i < nships; i++) {
+						ships[i].sunk = 0;
+					}
+					free(board1);
+					board1 = setup_board(size);
+					inbuf[0] = '\0';
+					input = inbuf;
+					updatescreen(board1, size, input);
+					break;
+				}
+			}
 		}
 	}
-
-	endwin();
-	printf("You won!\n");
-	return 0;
 }
